@@ -257,14 +257,17 @@ function pauseVideo() {
 
 function resumeVideo() {
   video.play();
+  //hideHome(scene);
 }
 
 function showVideo() {
   camera.layers.enable( 1 );
+  hideHome(scene);
 }
 
 function hideVideo() {
   camera.layers.disable( 1 );
+  showHome(scene);
 }
 
 function switchVideo(src) {
@@ -273,12 +276,24 @@ function switchVideo(src) {
   showVideo();
 }
 
-function hideHome() {
-
+function hideHome(scene) {
+  scene.traverse( function (child) {
+    if (child instanceof THREE.Mesh) {  
+        if (child.name.includes("jpg")) {
+            child.visible = false;
+        }
+    }
+  });
 }
 
-function showHome() {
-
+function showHome(scene) {
+  scene.traverse( function (child) {
+    if (child instanceof THREE.Mesh) {  
+        if (child.name.includes("jpg")) {
+            child.visible = true;
+        }
+    }
+  });
 }
 
 function clickVideo(src) {
@@ -296,7 +311,7 @@ function clickVideo(src) {
   else 
     switchVideo('video/MaryOculus.webm');
   */
-  hideHome();
+  hideHome(scene);
   switchVideo('video/MaryOculus.webm');
 }
 
@@ -543,14 +558,14 @@ function createDemoController(imagesController, material2) {
     var backCube = new THREE.Mesh(geometry, materialBack);
     backCube.position.z = -0.5;
     backCube.position.x = -0.3;
-    backCube.name = "1";
+    backCube.name = "1.jpg";
     //var back  = createGazeButton(raycaster, clock, backCube, clickVideo);
     scene.add(backCube);
 
     var nextCube = new THREE.Mesh(geometry, materialNext);
     nextCube.position.z = -0.5;
     nextCube.position.x = 0.3;
-    nextCube.name = "2";
+    nextCube.name = "2.jpg";
     //var next  = createGazeButton(raycaster, clock, backCube, clickVideo);
     scene.add(nextCube);
 
