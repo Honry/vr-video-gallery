@@ -255,22 +255,23 @@ function showHome(scene) {
 }
 
 function clickVideo(src) {
-  /*
-  if(src.name=='1') 
+  hideHome(scene);
+
+  if(src.name=='1.jpg') 
     switchVideo('video/1.mp4');
-  else if(src.name=='2') 
+  else if(src.name=='2.jpg') 
     switchVideo('video/2.mp4');
-  else if(src.name=='3') 
+  else if(src.name=='3.jpg') 
     switchVideo('video/3.mp4');
-  else if(src.name=='4') 
+  else if(src.name=='4.jpg') 
     switchVideo('video/4.mp4');
-  else if(src.name=='5') 
+  else if(src.name=='5.jpg') 
     switchVideo('video/5.mp4');
   else 
     switchVideo('video/MaryOculus.webm');
-  */
-  hideHome(scene);
-  switchVideo('video/MaryOculus.webm');
+
+  
+  //switchVideo('video/MaryOculus.webm');
   //window.location.href ="video/MaryOculus.webm";
   //window.location.href ="http://vids.slawrence.io/bears.mp4";
 }
