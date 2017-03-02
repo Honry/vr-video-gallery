@@ -61,7 +61,7 @@ var createGazeButton = function(raycaster, clock, obj, gazeEnter) {
       obj.scale.clampScalar(1,2);
 
       if (that.toggle > 0.01 || obj.scale.x >= 2) {
-        gazeEnter()
+        gazeEnter(obj)
         that.magicPressedBack = true;
       }
       that.toggle += clock.getDelta();
@@ -273,6 +273,33 @@ function switchVideo(src) {
   showVideo();
 }
 
+function hideHome() {
+
+}
+
+function showHome() {
+
+}
+
+function clickVideo(src) {
+  /*
+  if(src.name=='1') 
+    switchVideo('video/1.mp4');
+  else if(src.name=='2') 
+    switchVideo('video/2.mp4');
+  else if(src.name=='3') 
+    switchVideo('video/3.mp4');
+  else if(src.name=='4') 
+    switchVideo('video/4.mp4');
+  else if(src.name=='5') 
+    switchVideo('video/5.mp4');
+  else 
+    switchVideo('video/MaryOculus.webm');
+  */
+  hideHome();
+  switchVideo('video/MaryOculus.webm');
+}
+
 function initVideo(camera, scene, renderer , controls, effect) {
   //copy from view-source:https://threejs.org/examples/webvr_video.html
   var container = document.getElementById( 'container' );
@@ -363,6 +390,7 @@ function initVideo(camera, scene, renderer , controls, effect) {
   //
 
   window.addEventListener( 'resize', onWindowResize, false );
+
 
 }
 
@@ -463,10 +491,10 @@ function createPlayersController(scene, stickMaterial, player_changed_handler) {
   return that;
 };
 
-var camera;
+var camera,clock, raycaster;
 function createDemoController(imagesController, material2) {
   var that = {};
-  var raycaster, renderer, controls, manager;
+  var renderer, controls, manager;
 
   var backButton, nextButton;
 
@@ -515,13 +543,15 @@ function createDemoController(imagesController, material2) {
     var backCube = new THREE.Mesh(geometry, materialBack);
     backCube.position.z = -0.5;
     backCube.position.x = -0.3;
-    backCube.name = "BackCube";
+    backCube.name = "1";
+    //var back  = createGazeButton(raycaster, clock, backCube, clickVideo);
     scene.add(backCube);
 
     var nextCube = new THREE.Mesh(geometry, materialNext);
     nextCube.position.z = -0.5;
     nextCube.position.x = 0.3;
-    nextCube.name = "NextCube";
+    nextCube.name = "2";
+    //var next  = createGazeButton(raycaster, clock, backCube, clickVideo);
     scene.add(nextCube);
 
     var geometry = new THREE.BoxGeometry(2, 0.1, 2);
@@ -536,15 +566,15 @@ function createDemoController(imagesController, material2) {
 
     raycastedObjects = [skybox,  floor];
 
-    function backPressed() {
+    function backPressed(obj) {
       imagesController.goBack();
     };
 
-    backButton  = createGazeButton(raycaster, clock, backCube, backPressed);
-    nextButton = createGazeButton(raycaster, clock, nextCube, nextPressed);
+    backButton  = createGazeButton(raycaster, clock, backCube, clickVideo);
+    nextButton = createGazeButton(raycaster, clock, nextCube, clickVideo);
   };
 
-    function nextPressed() {
+    function nextPressed(obj) {
       imagesController.goNext();
     }
 
