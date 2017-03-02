@@ -7,7 +7,7 @@ document.body.appendChild(renderer.domElement);
 
 var video      = document.createElement('video');
 video.autoplay = true;
-video.src    = 'https://streams.kolor.com/streams/833ec36d-b115-43a2-bbf1-aaca49046bab/source.02-720p_HD.mp4';
+video.src    = '../video/1.mp4';
 video.crossOrigin = '';
 videoTexture = new THREE.Texture(video);
 videoTexture.minFilter = THREE.LinearFilter;
