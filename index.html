@@ -486,7 +486,7 @@ function createDemoController(imagesController, material2) {
     document.body.appendChild(renderer.domElement);
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
     controls = new THREE.VRControls(camera);
-    var effect = new THREE.VREffect(renderer);
+    effect = new THREE.VREffect(renderer);
     effect.setSize(window.innerWidth, window.innerHeight);
 
     manager = new WebVRManager(renderer, effect, {hideButton: false});
