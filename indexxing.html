@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<!-- Find out more at http://gregdmd.com/blog/2015/11/24/campjs-project-artsocks-vr/ -->
+<html>
+<head>
+  <title>Web VR boilerplate</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <style type="text/css">
+    body {
+      width: 100%;
+      height: 100%;
+      background-color: #000;
+      color: #fff;
+      margin: 0px;
+      padding: 0;
+      overflow: hidden;
+    }
+  </style>
+
+</head>
+<body>
+        <div id="container"></div>
+        </div>
+</body>
+<script>
+
+WebVRConfig = {
+  PREVENT_DISTORTION: true
+};
+</script>
+<script src="script/three.js"></script>
+<script src="script/VRControls.js"></script>
+<script src="script/VREffect.js"></script>
+<script src="script/webvr-polyfill.js"></script>
+<script src="script/webvr-manager.js"></script>
+<script src="script/WebVR.js"></script>
+<script src="script/socket.io.js"></script>
+<!-- <script src="script/art_socks.js"></script> -->
+
+<script>
+THREE.ImageUtils.crossOrigin = '';
+var createGazeButton = function(raycaster, clock, obj, gazeEnter) {
+  var that = {};
+  var intersection;
+
+  that.magicPressedBack = false;
+  that.toggle = 0;
+
+  that.raycast = function() {
+    var intersections = raycaster.intersectObject( obj );
+    intersection = ( intersections.length ) > 0 ? intersections[ 0 ] : null;
+
+
+    if (intersection !== null && !that.magicPressedBack) {
+      obj.scale.x *=(1.01+clock.getDelta());
+      obj.scale.y *=(1.01+clock.getDelta());
+      obj.scale.clampScalar(1,2);
+
+      if (that.toggle > 0.01 || obj.scale.x >= 2) {
+        gazeEnter(obj)
+        that.magicPressedBack = true;
+      }
+      that.toggle += clock.getDelta();
+    }
+
+    if (intersection == null) {
+      that.toggle = 0;
+      obj.scale.x *=0.99;
+      obj.scale.y *=0.99;
+      obj.scale.clampScalar(1,2);
+    }
+
+
+    if (intersection == null && that.magicPressedBack) {
+
+      that.magicPressedBack = false;
+    }
+
+  };
+
+  return that;
+}
+
+function createSkyBox() {
+  var boxWidth = 10;
+  var texture = THREE.ImageUtils.loadTexture(
+    'img/box.png'
+  );
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(boxWidth, boxWidth);
+
+  var geometry = new THREE.BoxGeometry(boxWidth, boxWidth, boxWidth);
+  var material = new THREE.MeshBasicMaterial({
+    map: texture,
+    color: 0x01BE00,
+    side: THREE.BackSide
+  });
+
+  return new THREE.Mesh(geometry, material);
+};
+
+function createImagesController(images) {
+  var that = {};
+  var current = 0;
+
+  var textures = [];
+
+  for (var i=0; i<images.length; i++) {
+    textures.push(THREE.ImageUtils.loadTexture(images[i]));
+  }
+
+  that.textures = textures;
+  
+  return that;
+};
+
+function createGazeController(scene, clock, numberOfDots) {
+  var that = {};
+
+  var spheres, spheresIndex=0, toggle =0, clock;
+
+  var intersection = null;
+
+  spheres = [];
+  spheresIndex = 0;
+  toggle =0;
+
+  var sphereGeometry = new THREE.SphereGeometry( 0.01, 32, 32 );
+  var sphereMaterial = new THREE.MeshBasicMaterial( { color: 0xff0000, shading: THREE.FlatShading } );
+
+  for ( var i = 0; i < numberOfDots; i++ ) {
+
+    var sphere = new THREE.Mesh( sphereGeometry, sphereMaterial );
+    scene.add( sphere );
+    spheres.push( sphere );
+
+  }
+
+  that.update = function(point) {
+
+
+    if ( toggle > 0.01) {
+
+      spheres[ spheresIndex ].position.copy( point );
+      spheres[ spheresIndex ].scale.set( 1, 1, 1 );
+      spheresIndex = ( spheresIndex + 1 ) % spheres.length;
+
+      toggle = 0;
+
+    }
+
+    toggle += clock.getDelta();
+  }
+
+  return that;
+}
+
+var video, videoImageContext, videoTexture;
+function createVideo(camera, scene, src) {
+  //var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+  video = document.createElement( 'video' );
+  video.src = "video/MaryOculus.webm";
+  video.load(); // must call after setting/changing source
+  video.play();
+
+  var SCREEN_WIDTH = window.innerWidth;
+  var SCREEN_HEIGHT = window.innerHeight;
+  videoImage = document.createElement( 'canvas' );
+  videoImage.width = SCREEN_WIDTH/2;
+  videoImage.height = SCREEN_HEIGHT/2;
+
+  videoImageContext = videoImage.getContext( '2d' );
+  // background color if no video present
+  videoImageContext.fillStyle = '#0000ff';
+  videoImageContext.fillRect( 0, 0, videoImage.width, videoImage.height );
+
+  videoTexture = new THREE.Texture( videoImage );
+  videoTexture.minFilter = THREE.LinearFilter;
+  videoTexture.magFilter = THREE.LinearFilter;
+  var movieMaterial = new THREE.MeshBasicMaterial( { map: videoTexture, overdraw: true, side:THREE.DoubleSide } );
+  // the geometry on which the movie will be displayed;
+  //      movie image will be scaled to fit these dimensions.
+  var movieGeometry = new THREE.PlaneGeometry( videoImage.width/2, videoImage.height/2, 1, 1 );
+  var movieScreen = new THREE.Mesh( movieGeometry, movieMaterial );
+  movieScreen.position.set(-0.3,0,-180);
+  movieScreen.name = "MovieScreen";
+  scene.add(movieScreen);
+  //camera.position.set(0,150,10);
+  //camera.position.z = -10;
+  //camera.lookAt(movieScreen.position);
+}
+
+function renderVideo(){
+  if ( video.readyState === video.HAVE_ENOUGH_DATA )
+  { 
+     console.log("______________________-");
+     videoImageContext.drawImage( video, 0, 0 );
+     //console.log(video.readyState);
+     //console.log(videoTexture);
+     if ( videoTexture )
+        videoTexture.needsUpdate = true;
+  }
+}
+
+function pauseVideo() {
+  video.pause();
+}
+
+function resumeVideo() {
+  video.play();
+  //hideHome(scene);
+}
+
+function showVideo() {
+  camera.layers.enable( 1 );
+  camera.layers.enable( 2 );
+  hideHome(scene);
+}
+
+function hideVideo() {
+  camera.layers.disable( 1 );
+  camera.layers.disable( 2 );
+  showHome(scene);
+}
+
+function switchVideo(src) {
+  video.src = src;
+  video.play();
+  showVideo();
+}
+
+function hideHome(scene) {
+  scene.traverse( function (child) {
+    if (child instanceof THREE.Mesh) {  
+        if (child.name.includes("jpg")) {
+            child.visible = false;
+        }
+    }
+  });
+}
+
+function showHome(scene) {
+  scene.traverse( function (child) {
+    if (child instanceof THREE.Mesh) {  
+        if (child.name.includes("jpg")) {
+            child.visible = true;
+        }
+    }
+  });
+}
+
+function clickVideo(src) {
+  /*
+  if(src.name=='1') 
+    switchVideo('video/1.mp4');
+  else if(src.name=='2') 
+    switchVideo('video/2.mp4');
+  else if(src.name=='3') 
+    switchVideo('video/3.mp4');
+  else if(src.name=='4') 
+    switchVideo('video/4.mp4');
+  else if(src.name=='5') 
+    switchVideo('video/5.mp4');
+  else 
+    switchVideo('video/MaryOculus.webm');
+  */
+  hideHome(scene);
+  switchVideo('video/MaryOculus.webm');
+  //window.location.href ="video/MaryOculus.webm";
+  //window.location.href ="http://vids.slawrence.io/bears.mp4";
+}
+
+function initVideo(camera, scene, renderer , controls, effect) {
+  //copy from view-source:https://threejs.org/examples/webvr_video.html
+  var container = document.getElementById( 'container' );
+  container.addEventListener( 'click', function () {
+      video.play();
+  } );
+
+  //camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 2000 );
+  //camera.layers.enable( 1 ); // render left view when no stereo available
+
+  // video
+
+  video = document.createElement( 'video' );
+  video.loop = true;
+  video.muted = true;
+  video.src = 'video/MaryOculus.webm';
+  video.setAttribute( 'webkit-playsinline', 'webkit-playsinline' );
+  video.play();
+
+  texture = new THREE.VideoTexture( video );
+  texture.minFilter = THREE.NearestFilter;
+  texture.maxFilter = THREE.NearestFilter;
+  texture.format = THREE.RGBFormat;
+  texture.generateMipmaps = false;
+
+  //scene = new THREE.Scene();
+
+  // left
+
+  var geometry = new THREE.SphereGeometry( 500, 60, 40 );
+  geometry.scale( - 1, 1, 1 );
+
+  var uvs = geometry.faceVertexUvs[ 0 ];
+
+  for ( var i = 0; i < uvs.length; i ++ ) {
+      for ( var j = 0; j < 3; j ++ ) {
+          uvs[ i ][ j ].x *= 0.5;
+      }
+  }
+
+  var material = new THREE.MeshBasicMaterial( { map: texture } );
+
+  var mesh = new THREE.Mesh( geometry, material );
+  mesh.rotation.y = - Math.PI / 2;
+  mesh.layers.set( 1 ); // display in left eye only
+  scene.add( mesh );
+
+  // right
+  var geometry = new THREE.SphereGeometry( 500, 60, 40 );
+  geometry.scale( - 1, 1, 1 );
+  var uvs = geometry.faceVertexUvs[ 0 ];
+  for ( var i = 0; i < uvs.length; i ++ ) {
+      for ( var j = 0; j < 3; j ++ ) {
+          uvs[ i ][ j ].x *= 0.5;
+          uvs[ i ][ j ].x += 0.5;
+      }
+  }
+
+  var material = new THREE.MeshBasicMaterial( { map: texture } );
+  var mesh = new THREE.Mesh( geometry, material );
+  mesh.rotation.y = - Math.PI / 2;
+  mesh.layers.set( 2 ); // display in right eye only
+  scene.add( mesh );
+
+  //
+
+  //renderer = new THREE.WebGLRenderer();
+  renderer.setClearColor( 0x101010 );
+  renderer.setPixelRatio( window.devicePixelRatio );
+  renderer.setSize( window.innerWidth, window.innerHeight );
+  container.appendChild( renderer.domElement );
+
+  //
+
+  //controls = new THREE.VRControls( camera );
+
+  //effect = new THREE.VREffect( renderer );
+  effect.scale = 0; // video doesnt need eye separation
+  effect.setSize( window.innerWidth, window.innerHeight );
+
+  if ( WEBVR.isAvailable() === true ) {
+
+      document.body.appendChild( WEBVR.getButton( effect ) );
+
+  }
+
+
+  //
+
+  window.addEventListener( 'resize', onWindowResize, false );
+
+
+}
+
+function createPlayersController(scene, stickMaterial, player_changed_handler) {
+  var that = {};
+  var intersection;
+  var stickGeometry = new THREE.BoxGeometry(0.05, 0.1, 2);
+
+  var players = {};
+
+  function createPlayer(my_id, numberOfDots) {
+    var player_stick = new THREE.Mesh(stickGeometry, stickMaterial);
+    player_stick.name= "player_stick";
+    addStick(player_stick);
+    return {
+      "id": my_id,
+      "stick": player_stick,
+      "gazeController": createGazeController(scene, clock, numberOfDots)
+    }
+  }
+
+  var current_player = createPlayer(null, 40);
+
+  that.current_player = current_player;
+
+  that.setPlayerId = function(player_id){
+    current_player["id"] = player_id;
+  }
+
+  that.updatePlayer = function(camera, raycaster, raycastedObjects) {
+
+   raycaster.ray.origin.setFromMatrixPosition( camera.matrixWorld );
+    raycaster.ray.direction.set( 0, 0, 0.5 ).unproject( camera ).sub( raycaster.ray.origin ).normalize();
+
+    var intersections = raycaster.intersectObjects( raycastedObjects );
+    intersection = ( intersections.length ) > 0 ? intersections[ 0 ] : null;
+
+
+    if (intersection !== null) {
+      current_player["gazeController"].update(intersection.point);
+    }
+
+    if (current_player["stick"].rotation.y != camera.rotation.y && current_player["stick"].rotation.x != camera.rotation.x) {
+
+      current_player["stick"].rotation.y = camera.rotation.y;
+      current_player["stick"].rotation.x = camera.rotation.x;
+      player_changed_handler(
+          {'who': current_player["id"],
+          'x': current_player["stick"].rotation.x,
+          'y': current_player["stick"].rotation.y,
+          'gaze': {
+            'x': intersection.point.x,
+            'y': intersection.point.y,
+            'z': intersection.point.z
+          }
+          }
+      );
+    }
+  }
+
+  that.handleMessage = function(msg) {
+    if (msg.who == current_player["id"]) {
+      return;
+    }
+    var otherGuy = players[msg.who];
+    if (otherGuy == null) {
+      players[msg.who] = createPlayer(msg.who, 1);
+      otherGuy = players[msg.who];
+    }
+    var otherStick = otherGuy["stick"];
+    otherStick.rotation.y = msg.y;
+    otherStick.rotation.x = msg.x;
+
+
+    otherGuy["gazeController"].update(new THREE.Vector3(msg.gaze.x, msg.gaze.y, msg.gaze.z));
+  };
+
+  that.addPlayer = function(player_id) {
+    if(player_id != current_player["id"]) {
+        players[player_id] = createPlayer(player_id, 1);
+      }
+  };
+
+  that.removePlayer = function(player_id) {
+    var leaving_player = players[player_id];
+    if (leaving_player && player_id != current_player["id"]) {
+      scene.remove(leaving_player["stick"]);
+      players[player_id] = null;
+    }
+  }
+
+  function addStick(stick) {
+    stick.position.z = 0;
+    stick.position.y = -0.5;
+    scene.add(stick);
+  };
+
+  return that;
+};
+
+var camera,clock, raycaster;
+function createDemoController(imagesController, material2) {
+  var that = {};
+  var renderer, controls, manager;
+
+  var videoButton1, videoButton2, videoButton3, videoButton4, videoButton5;
+
+  var videoImage1, videoImage2, videoImage3, videoImage4, videoImage5;
+
+  var intersection, raycastedObjects;
+
+  var trophie, trophieButton, skybox;
+  var score = 0;
+
+  that.run = function() {
+
+    raycaster = new THREE.Raycaster();
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    document.body.appendChild(renderer.domElement);
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+    controls = new THREE.VRControls(camera);
+    effect = new THREE.VREffect(renderer);
+    effect.setSize(window.innerWidth, window.innerHeight);
+
+    manager = new WebVRManager(renderer, effect, {hideButton: false});
+
+    clock = new THREE.Clock();
+
+    var ambient = new THREE.AmbientLight( 0xFFFFFF );
+    scene.add( ambient );
+
+    skybox = createSkyBox();
+    skybox.name = "SkyBox";
+    //scene.add(skybox);
+    //createVideo(camera, scene, "abc");
+    initVideo(camera, scene, renderer , controls, effect);
+
+
+    videoImage1 = new THREE.MeshLambertMaterial({
+      map: imagesController.textures[1]
+    });
+
+    videoImage2 = new THREE.MeshLambertMaterial({
+     map: imagesController.textures[2]
+    });
+	
+	videoImage3 = new THREE.MeshLambertMaterial({
+	 map: imagesController.textures[3]
+	});
+	
+	videoImage4 = new THREE.MeshLambertMaterial({
+	 map: imagesController.textures[4]
+	});
+	
+	videoImage5 = new THREE.MeshLambertMaterial({
+	 map: imagesController.textures[5]
+	});
+
+
+    var geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+    var videoCube1 = new THREE.Mesh(geometry, videoImage1);
+    videoCube1.position.z = -0.5;
+    videoCube1.position.x = -0.2;
+    videoCube1.name = "1.jpg";
+    scene.add(videoCube1);
+
+    var videoCube2 = new THREE.Mesh(geometry, videoImage2);
+    videoCube2.position.z = -0.5;
+    videoCube2.position.x = 0.2;
+    videoCube2.name = "2.jpg";
+    scene.add(videoCube2);
+	
+	var videoCube3 = new THREE.Mesh(geometry, videoImage3);
+	videoCube3.position.z = -0.5;
+	videoCube3.position.y = 0.15;
+	videoCube3.position.x = -0.1;
+	videoCube3.name = "3.jpg";
+	scene.add(videoCube3);
+	
+	var videoCube4 = new THREE.Mesh(geometry, videoImage4);
+	videoCube4.position.z = -0.5;
+	videoCube4.position.y = 0.15;
+	videoCube4.position.x = 0.1;
+	videoCube4.name = "4.jpg";
+	scene.add(videoCube4);
+	
+    var videoCube5 = new THREE.Mesh(geometry, videoImage5);
+	videoCube5.position.z = -0.5;
+	videoCube5.position.y = -0.15;
+	videoCube5.position.x = 0;
+	videoCube5.name = "5.jpg";
+	scene.add(videoCube5);
+
+    var geometry = new THREE.BoxGeometry(2, 0.1, 2);
+    var floor = new THREE.Mesh(geometry, material2);
+    floor.name = "Floor";
+
+    // Position cube mesh
+    floor.position.y = -1;
+    scene.add(floor);
+
+    var geometry = new THREE.BoxGeometry(0.1, 0.6, 0.6);
+
+    raycastedObjects = [skybox,  floor];
+
+    videoButton1 = createGazeButton(raycaster, clock, videoCube1, clickVideo);
+    videoButton2 = createGazeButton(raycaster, clock, videoCube2, clickVideo);
+	videoButton3 = createGazeButton(raycaster, clock, videoCube3, clickVideo);
+	videoButton4 = createGazeButton(raycaster, clock, videoCube4, clickVideo);
+	videoButton5 = createGazeButton(raycaster, clock, videoCube5, clickVideo);
+  };
+
+    that.animate = function (timestamp) {
+
+      playersController.updatePlayer(camera, raycaster, raycastedObjects);
+
+      if (score > 0 && score % 3 == 0) {
+        skybox.rotation.y += 0.01;
+        skybox.rotation.z += 0.01;
+      }
+
+      videoButton1.raycast();
+      videoButton2.raycast();
+	  videoButton3.raycast();
+	  videoButton4.raycast();
+	  videoButton5.raycast();
+
+      controls.update();
+      //renderVideo();
+      manager.render(scene, camera, timestamp);
+      requestAnimationFrame(that.animate);
+  }
+
+  that.updateScene = function() {
+    material2.map = imagesController.textures[0];
+    videoImage1.map = imagesController.textures[1];
+    videoImage2.map = imagesController.textures[2];
+	videoImage3.map = imagesController.textures[3];
+	videoImage4.map = imagesController.textures[4];
+	videoImage5.map = imagesController.textures[5];
+  }
+  return that;
+};
+
+</script>
+
+<script>
+
+var scene = new THREE.Scene();
+
+var images = ['img/box.png', 'img/1.jpg', 'img/2.jpg', 'img/3.jpg', 'img/4.jpg', 'img/5.jpg']
+var imagesController = createImagesController(images);
+
+var material2 = new THREE.MeshLambertMaterial({
+  map: imagesController.textures[0]
+});
+
+
+var demoController = createDemoController(imagesController, material2);
+demoController.run();
+
+var playersController = createPlayersController(scene, material2, function(message) {
+  socket.emit('player-stick', message);
+}
+);
+
+function getParameterByName(name) {
+    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+        results = regex.exec(location.search);
+    return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+}
+
+var socket = io();
+socket.on('message', function (message) {
+  console.log("connection madee", message);
+  playersController.setPlayerId(message);
+
+  var reddit_query = getParameterByName("reddit");
+  if (reddit_query != "") {
+    socket.emit('reddit_query', reddit_query);
+  }
+
+});
+
+socket.on('player-stick', function(msg){
+  playersController.handleMessage(msg);
+});
+
+demoController.updateScene();
+
+demoController.animate();
+
+function onKey(event) {
+  console.log(event.keyCode);
+  if (event.keyCode == 90) {
+    controls.resetSensor();
+  }
+  if (event.keyCode == 49) { //1 pause
+    pauseVideo();
+  }
+  if (event.keyCode == 50) { //2 resume
+    resumeVideo();
+  }
+  if (event.keyCode == 51) { //3 hide
+    hideVideo();
+  }
+  if (event.keyCode == 52) { //4 show
+    showVideo();
+  }
+  if (event.keyCode == 53) { //5 switch
+    switchVideo("video/1.mp4");
+  }
+}
+
+window.addEventListener('keydown', onKey, true);
+function onWindowResize() {
+
+    //camera.aspect = window.innerWidth / window.innerHeight;
+    //camera.updateProjectionMatrix();
+
+    //effect.setSize( window.innerWidth, window.innerHeight );
+
+}
+
+</script>
+</html>
