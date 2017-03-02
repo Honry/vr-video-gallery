@@ -1,8 +1,7 @@
 <!DOCTYPE html>
-<!-- Find out more at http://gregdmd.com/blog/2015/11/24/campjs-project-artsocks-vr/ -->
 <html>
 <head>
-  <title>Web VR boilerplate</title>
+  <title>Web VR Gallery - WebVR Hackathon Team 2</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
   <meta name="mobile-web-app-capable" content="yes">
@@ -113,52 +112,8 @@ function createImagesController(images) {
   for (var i=0; i<images.length; i++) {
     textures.push(THREE.ImageUtils.loadTexture(images[i]));
   }
-
-  that.goNext = function() {
-    current = indexAfter(current);
-  }
-
-  that.goBack = function() {
-    current = indexBefore(current);
-  }
-
-  that.goTo = function(index) {
-    current = index;
-  }
-
-  that.currentIndex = function() {
-    return current;
-  }
-
-  that.previousTexture = function() {
-    return textures[indexBefore(current)];
-  }
-
-  that.nextTexture = function() {
-    return textures[indexAfter(current)];
-  }
-
-  that.currentTexture = function() {
-    return textures[current];
-  }
-
-  function indexBefore(i) {
-    var result;
-    result = i - 1;
-    if (result < 0) {
-      result = textures.length - 1;
-    }
-    return result;
-  }
-
-  function indexAfter(i) {
-    var result;
-    result = i + 1;
-    if (result == textures.length) {
-      result = 0;
-    }
-    return result;
-  }
+  
+  that.textures = textures;
 
   return that;
 };
@@ -186,7 +141,6 @@ function createGazeController(scene, clock, numberOfDots) {
   }
 
   that.update = function(point) {
-
 
     if ( toggle > 0.01) {
 
@@ -473,9 +427,9 @@ function createDemoController(imagesController, material2) {
   var that = {};
   var renderer, controls, manager;
 
-  var backButton, nextButton;
+  var videoButton1, videoButton2, videoButton3, videoButton4, videoButton5;
 
-  var materialNext, materialBack;
+  var videoImage1, videoImage2, videoImage3, videoImage4, videoImage5;
 
   var intersection, raycastedObjects;
 
@@ -507,29 +461,59 @@ function createDemoController(imagesController, material2) {
     initVideo(camera, scene, renderer , controls, effect);
 
 
-    materialNext = new THREE.MeshLambertMaterial({
-      map: imagesController.nextTexture()
+    videoImage1 = new THREE.MeshLambertMaterial({
+      map: imagesController.textures[1]
     });
 
-    materialBack = new THREE.MeshLambertMaterial({
-     map: imagesController.previousTexture()
+    videoImage2 = new THREE.MeshLambertMaterial({
+     map: imagesController.textures[2]
+    });
+	
+	videoImage3 = new THREE.MeshLambertMaterial({
+      map: imagesController.textures[3]
+    });
+
+    videoImage4 = new THREE.MeshLambertMaterial({
+     map: imagesController.textures[4]
+    });
+	
+	videoImage5 = new THREE.MeshLambertMaterial({
+     map: imagesController.textures[5]
     });
 
 
     var geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-    var backCube = new THREE.Mesh(geometry, materialBack);
-    backCube.position.z = -0.5;
-    backCube.position.x = -0.3;
-    backCube.name = "1";
-    //var back  = createGazeButton(raycaster, clock, backCube, clickVideo);
-    scene.add(backCube);
+    var videoCube1 = new THREE.Mesh(geometry, videoImage2);
+    videoCube1.position.z = -0.5;
+	videoCube1.position.y = -0.2;
+    videoCube1.position.x = 0;
+    videoCube1.name = "1";
+    scene.add(videoCube1);
 
-    var nextCube = new THREE.Mesh(geometry, materialNext);
-    nextCube.position.z = -0.5;
-    nextCube.position.x = 0.3;
-    nextCube.name = "2";
-    //var next  = createGazeButton(raycaster, clock, backCube, clickVideo);
-    scene.add(nextCube);
+    var videoCube2 = new THREE.Mesh(geometry, videoImage1);
+    videoCube2.position.z = -0.5;
+	videoCube2.position.y = 0.2;
+    videoCube2.position.x = 0;
+    videoCube2.name = "2";
+    scene.add(videoCube2);
+	
+	var videoCube3 = new THREE.Mesh(geometry, videoImage3);
+	videoCube3.position.z = -0.5;
+	videoCube3.position.x = -0.25;
+	videoCube3.name = "3";
+	scene.add(videoCube3);
+	
+	var videoCube4 = new THREE.Mesh(geometry, videoImage4);
+	videoCube4.position.z = -0.5;
+	videoCube4.position.x = 0.25;
+	videoCube4.name = "4";
+	scene.add(videoCube4);
+	
+	var videoCube5 = new THREE.Mesh(geometry, videoImage5);
+	videoCube5.position.z = -0.5;
+	videoCube5.position.x = 0;
+	videoCube5.name = "5";
+	scene.add(videoCube5);
 
     var geometry = new THREE.BoxGeometry(2, 0.1, 2);
     var floor = new THREE.Mesh(geometry, material2);
@@ -543,18 +527,13 @@ function createDemoController(imagesController, material2) {
 
     raycastedObjects = [skybox,  floor];
 
-    function backPressed(obj) {
-      imagesController.goBack();
-    };
-
-    backButton  = createGazeButton(raycaster, clock, backCube, clickVideo);
-    nextButton = createGazeButton(raycaster, clock, nextCube, clickVideo);
+    videoButton1 = createGazeButton(raycaster, clock, videoCube1, clickVideo);
+    videoButton2 = createGazeButton(raycaster, clock, videoCube2, clickVideo);
+	videoButton3 = createGazeButton(raycaster, clock, videoCube3, clickVideo); 
+	videoButton4 = createGazeButton(raycaster, clock, videoCube4, clickVideo);
+	videoButton5 = createGazeButton(raycaster, clock, videoCube5, clickVideo);
   };
-
-    function nextPressed(obj) {
-      imagesController.goNext();
-    }
-
+  
     that.animate = function (timestamp) {
 
       playersController.updatePlayer(camera, raycaster, raycastedObjects);
@@ -564,8 +543,11 @@ function createDemoController(imagesController, material2) {
         skybox.rotation.z += 0.01;
       }
 
-      backButton.raycast();
-      nextButton.raycast();
+      videoButton1.raycast();
+      videoButton2.raycast();
+	  videoButton3.raycast();
+	  videoButton4.raycast();
+	  videoButton5.raycast();
 
       controls.update();
       //renderVideo();
@@ -574,9 +556,12 @@ function createDemoController(imagesController, material2) {
   }
 
   that.updateScene = function() {
-    material2.map = imagesController.currentTexture();
-    materialNext.map = imagesController.nextTexture();
-    materialBack.map = imagesController.previousTexture();
+    material2.map = imagesController.textures[0];
+    videoImage1.map = imagesController.textures[1];
+    videoImage2.map = imagesController.textures[2];
+	videoImage3.map = imagesController.textures[3];
+	videoImage4.map = imagesController.textures[4];
+	videoImage5.map = imagesController.textures[5];
   }
   return that;
 };
@@ -587,11 +572,11 @@ function createDemoController(imagesController, material2) {
 
 var scene = new THREE.Scene();
 
-var images = ['img/box.png', 'img/1.jpg', 'img/2.jpg', 'img/3.jpg', 'img/4.jpg', 'img/5.jpg']
+var images = ['img/box.png', 'img/1.jpg', 'img/2.jpg', 'img/3.jpg', 'img/4.jpg', 'img/5.jpg'];
 var imagesController = createImagesController(images);
 
 var material2 = new THREE.MeshLambertMaterial({
-  map: imagesController.currentTexture()
+  map: imagesController.textures[0]
 });
 
 
